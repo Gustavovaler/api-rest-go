@@ -1,8 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	mux "github.com/gorilla/mux"
+	"log"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -19,7 +21,7 @@ var id int
 func GETnoteHandler(w http.ResponseWriter, r *http.Request) {
 	var notes []Note
 	for _, value := range noteStore {
-		notes = append(notes, v)
+		notes = append(notes, value)
 	}
 
 	w.Header().Set("Content-type", "application/json")
@@ -27,7 +29,7 @@ func GETnoteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	w.WriteHeader(http.StatusOk)
+	w.WriteHeader(200)
 	w.Write(j)
 }
 
@@ -44,12 +46,47 @@ func POSTnoteHandler(w http.ResponseWriter, r *http.Request) {
 	noteStore[k] = note
 
 	w.Header().Set("Content-type", "application/json")
-	j, err := json.Marshal(notes)
+	j, err := json.Marshal(note)
 	if err != nil {
 		panic(err)
 	}
 	w.WriteHeader(http.StatusCreated)
 	w.Write(j)
+
+}
+
+func PUTnoteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	k := vars["id"]
+	var noteUpdate Note
+	err := json.NewDecoder(r.Body).Decode(&noteUpdate)
+	if err != nil {
+		panic(err)
+	}
+
+	if note, ok := noteStore[k]; ok {
+		noteUpdate.CreatedAt = note.CreatedAt
+		delete(noteStore, k)
+		noteStore[k] = noteUpdate
+	} else {
+		log.Printf("No se encontro ese id %s", k)
+	}
+	w.WriteHeader(http.StatusNoContent)
+
+}
+
+func DELETEnoteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	k := vars["id"]
+
+	if _, ok := noteStore[k]; ok {
+
+		delete(noteStore, k)
+
+	} else {
+		log.Printf("No se encontro ese id %s", k)
+	}
+	w.WriteHeader(http.StatusNoContent)
 
 }
 
@@ -68,7 +105,7 @@ func main() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	fmt.Println("Servidor escuchando el puerto 8080")
+	//fmt.Println("Servidor escuchando el puerto 8080")
 
 	server.ListenAndServe()
 }
